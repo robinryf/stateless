@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Stateless
 {
-    public partial class StateMachine<TState, TTrigger>
+    public partial class StateMachine<TState, TTrigger, TContext>
     {
         internal abstract class TriggerBehaviour
         {

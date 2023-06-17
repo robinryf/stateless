@@ -8,7 +8,7 @@ namespace Stateless.Reflection
     /// </summary>
     public class FixedTransitionInfo : TransitionInfo
     {
-        internal static FixedTransitionInfo Create<TState, TTrigger>(StateMachine<TState, TTrigger>.TriggerBehaviour behaviour, StateInfo destinationStateInfo)
+        internal static FixedTransitionInfo Create<TState, TTrigger, TContext>(StateMachine<TState, TTrigger, TContext>.TriggerBehaviour behaviour, StateInfo destinationStateInfo) where TContext : StateMachine<TState, TTrigger, TContext>.IStateMachineContext
         {
             var transition = new FixedTransitionInfo
             {

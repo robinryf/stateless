@@ -1,22 +1,29 @@
 ﻿namespace Stateless
 {
-    public partial class StateMachine<TState, TTrigger>
+    public partial class StateMachine<TState, TTrigger, TContext>
     {
         /// <summary>
         /// Describes an initial state transition.
         /// </summary>
         public class InitialTransition : Transition
         {
-            /// <summary>
-            /// Construct a transition.
-            /// </summary>
-            /// <param name="source">The state transitioned from.</param>
-            /// <param name="destination">The state transitioned to.</param>
-            /// <param name="trigger">The trigger that caused the transition.</param>
-            /// <param name="parameters">The optional trigger parameters</param>
-            public InitialTransition(TState source, TState destination, TTrigger trigger, object[] parameters = null) : base(source, destination, trigger, parameters)
+	        /// <summary>
+	        /// Construct a transition.
+	        /// </summary>
+	        /// <param name="source">The state transitioned from.</param>
+	        /// <param name="destination">The state transitioned to.</param>
+	        /// <param name="trigger">The trigger that caused the transition.</param>
+	        /// <param name="context"></param>
+	        /// <param name="parameters">The optional trigger parameters</param>
+	        public InitialTransition(TState source, TState destination, TTrigger trigger, TContext context, object[] parameters = null) : base(source, destination, trigger, context, parameters)
             {
             }
+        }
+        
+        public virtual Transition CreateTransition(TState source, TState destination, TTrigger trigger, TContext context, object[] parameters = null)
+        {
+	        return new StateMachine<TState, TTrigger, TContext>.Transition(source, destination, trigger, context,
+		        parameters);
         }
 
         /// <summary>
@@ -24,22 +31,24 @@
         /// </summary>
         public class Transition
         {
-            /// <summary>
-            /// Construct a transition.
-            /// </summary>
-            /// <param name="source">The state transitioned from.</param>
-            /// <param name="destination">The state transitioned to.</param>
-            /// <param name="trigger">The trigger that caused the transition.</param>
-            /// <param name="parameters">The optional trigger parameters</param>
-            public Transition(TState source, TState destination, TTrigger trigger, object[] parameters = null)
+	        /// <summary>
+	        /// Construct a transition.
+	        /// </summary>
+	        /// <param name="source">The state transitioned from.</param>
+	        /// <param name="destination">The state transitioned to.</param>
+	        /// <param name="trigger">The trigger that caused the transition.</param>
+	        /// <param name="context"></param>
+	        /// <param name="parameters">The optional trigger parameters</param>
+	        public Transition(TState source, TState destination, TTrigger trigger, TContext context, object[] parameters = null)
             {
                 Source = source;
                 Destination = destination;
                 Trigger = trigger;
+                Context = context;
                 Parameters = parameters ?? new object[0];
             }
 
-            /// <summary>
+	        /// <summary>
             /// The state transitioned from.
             /// </summary>
             public TState Source { get; }
@@ -53,6 +62,11 @@
             /// The trigger that caused the transition.
             /// </summary>
             public TTrigger Trigger { get; }
+            
+            /// <summary>
+            /// 
+            /// </summary>
+            public TContext Context { get; }
 
             /// <summary>
             /// True if the transition is a re-entry, i.e. the identity transition.

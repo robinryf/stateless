@@ -4,18 +4,18 @@ using System.Linq;
 
 namespace Stateless
 {
-    public partial class StateMachine<TState, TTrigger>
+    public partial class StateMachine<TState, TTrigger, TContext>
     {
         /// <summary>
         /// The configuration for a single state value.
         /// </summary>
         public partial class StateConfiguration
         {
-            private readonly StateMachine<TState, TTrigger> _machine;
+            private readonly StateMachine<TState, TTrigger, TContext> _machine;
             readonly StateRepresentation _representation;
             readonly Func<TState, StateRepresentation> _lookup;
 
-            internal StateConfiguration(StateMachine<TState, TTrigger> machine, StateRepresentation representation, Func<TState, StateRepresentation> lookup)
+            internal StateConfiguration(StateMachine<TState, TTrigger, TContext> machine, StateRepresentation representation, Func<TState, StateRepresentation> lookup)
             {
                 _machine = machine;
                 _representation = representation;
@@ -30,7 +30,7 @@ namespace Stateless
             /// <summary>
             /// The machine that is configured with this configuration.
             /// </summary>
-            public StateMachine<TState, TTrigger> Machine { get { return _machine; } }
+            public StateMachine<TState, TTrigger, TContext> Machine { get { return _machine; } }
 
             /// <summary>
             /// Accept the specified trigger and transition to the destination state.

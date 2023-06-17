@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Stateless
 {
-    public partial class StateMachine<TState, TTrigger>
+    public partial class StateMachine<TState, TTrigger, TContext>
     {
         public partial class StateConfiguration
         {

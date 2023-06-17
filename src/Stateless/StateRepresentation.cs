@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Stateless
 {
-    public partial class StateMachine<TState, TTrigger>
+    public partial class StateMachine<TState, TTrigger, TContext>
     {
         internal partial class StateRepresentation
         {

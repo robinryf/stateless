@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Stateless
 {
-    partial class StateMachine<TState, TTrigger>
+    partial class StateMachine<TState, TTrigger, TContext>
     {
         /// <summary>
         /// Associates configured parameters with an underlying trigger value.

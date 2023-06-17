@@ -15,13 +15,13 @@
         /// </summary>
         public string FromTrigger { get; internal set; }
 
-        internal static ActionInfo Create<TState, TTrigger>(StateMachine<TState, TTrigger>.EntryActionBehavior entryAction)
+        internal static ActionInfo Create<TState, TTrigger, TContext>(StateMachine<TState, TTrigger, TContext>.EntryActionBehavior entryAction) where TContext : StateMachine<TState, TTrigger, TContext>.IStateMachineContext
         {
-            StateMachine<TState, TTrigger>.EntryActionBehavior.SyncFrom<TTrigger> syncFrom = entryAction as StateMachine<TState, TTrigger>.EntryActionBehavior.SyncFrom<TTrigger>;
+            StateMachine<TState, TTrigger, TContext>.EntryActionBehavior.SyncFrom<TTrigger> syncFrom = entryAction as StateMachine<TState, TTrigger, TContext>.EntryActionBehavior.SyncFrom<TTrigger>;
             if (syncFrom != null)
                 return new ActionInfo(entryAction.Description, syncFrom.Trigger.ToString());
 
-            StateMachine<TState, TTrigger>.EntryActionBehavior.AsyncFrom<TTrigger> asyncFrom = entryAction as StateMachine<TState, TTrigger>.EntryActionBehavior.AsyncFrom<TTrigger>;
+            StateMachine<TState, TTrigger, TContext>.EntryActionBehavior.AsyncFrom<TTrigger> asyncFrom = entryAction as StateMachine<TState, TTrigger, TContext>.EntryActionBehavior.AsyncFrom<TTrigger>;
             if (asyncFrom != null)
                 return new ActionInfo(entryAction.Description, asyncFrom.Trigger.ToString());
 

@@ -2,7 +2,8 @@
 
 namespace Stateless
 {
-    public partial class StateMachine<TState, TTrigger>
+    public partial class StateMachine<TState, TTrigger, TContext>
+	    where TContext : StateMachine<TState, TTrigger, TContext>.IStateMachineContext
     {
         internal class TriggerBehaviourResult
         {
