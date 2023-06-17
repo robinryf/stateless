@@ -4,18 +4,21 @@ using Stateless.Graph;
 
 namespace BugTrackerExample
 {
-    public class Bug
+    public class Bug : StateMachine<Bug.BugState, Bug.Trigger, Bug>.IStateMachineContext
     {
-        private enum State { Open, Assigned, Deferred, Closed }
+        public enum BugState { Open, Assigned, Deferred, Closed }
 
         private enum Trigger { Assign, Defer, Close }
 
-        private readonly StateMachine<State, Trigger> _machine;
+        private readonly StateMachine<BugState, Trigger, Bug> _machine;
         // The TriggerWithParameters object is used when a trigger requires a payload.
-        private readonly StateMachine<State, Trigger>.TriggerWithParameters<string> _assignTrigger;
+        private readonly StateMachine<BugState, Trigger, Bug>.TriggerWithParameters<string> _assignTrigger;
 
         private readonly string _title;
         private string _assignee;
+        private StateMachine<BugState, Trigger, Bug>.StateMachineHandle _handle;
+
+        public BugState State { get; set; }
 
 
         /// <summary>
@@ -27,46 +30,48 @@ namespace BugTrackerExample
             _title = title;
 
             // Instantiate a new state machine in the Open state
-            _machine = new StateMachine<State, Trigger>(State.Open);
+            _machine = new StateMachine<BugState, Trigger, Bug>();
 
             // Instantiate a new trigger with a parameter. 
             _assignTrigger = _machine.SetTriggerParameters<string>(Trigger.Assign);
 
             // Configure the Open state
-            _machine.Configure(State.Open)
-                .Permit(Trigger.Assign, State.Assigned);
+            _machine.Configure(BugState.Open)
+                .Permit(Trigger.Assign, BugState.Assigned);
 
             // Configure the Assigned state
-            _machine.Configure(State.Assigned)
-                .SubstateOf(State.Open)
+            _machine.Configure(BugState.Assigned)
+                .SubstateOf(BugState.Open)
                 .OnEntryFrom(_assignTrigger, OnAssigned)  // This is where the TriggerWithParameters is used. Note that the TriggerWithParameters object is used, not something from the enum
                 .PermitReentry(Trigger.Assign)
-                .Permit(Trigger.Close, State.Closed)
-                .Permit(Trigger.Defer, State.Deferred)
+                .Permit(Trigger.Close, BugState.Closed)
+                .Permit(Trigger.Defer, BugState.Deferred)
                 .OnExit(OnDeassigned);
 
             // Configure the Deferred state
-            _machine.Configure(State.Deferred)
+            _machine.Configure(BugState.Deferred)
                 .OnEntry(() => _assignee = null)
-                .Permit(Trigger.Assign, State.Assigned);
+                .Permit(Trigger.Assign, BugState.Assigned);
+
+            _handle = _machine.CreateHandle(this, BugState.Open);
         }
 
         public void Close()
         {
-            _machine.Fire(Trigger.Close);
+            _handle.Fire(Trigger.Close);
         }
 
         public void Assign(string assignee)
         {
             // This is how a trigger with parameter is used, the parameter is supplied to the state machine as a parameter to the Fire method.
-            _machine.Fire(_assignTrigger, assignee);
+            _handle.Fire(_assignTrigger, assignee);
         }
 
-        public bool CanAssign => _machine.CanFire(Trigger.Assign);
+        public bool CanAssign => _handle.CanFire(Trigger.Assign);
 
         public void Defer()
         {
-            _machine.Fire(Trigger.Defer);
+	        _handle.Fire(Trigger.Defer);
         }
         /// <summary>
         /// This method is called automatically when the Assigned state is entered, but only when the trigger is _assignTrigger.
@@ -95,7 +100,7 @@ namespace BugTrackerExample
 
         public string ToDotGraph()
         {
-            return UmlDotGraph.Format(_machine.GetInfo());
+            return UmlDotGraph.Format(_handle.GetInfo());
         }
     }
 }

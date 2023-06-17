@@ -21,7 +21,7 @@ namespace AlarmExample
     /// The included PNG file shows what the state flow looks like.
     /// 
     /// </summary>
-    public partial class Alarm
+    public partial class Alarm : StateMachine<AlarmState, AlarmCommand, Alarm>.IStateMachineContext
     {
         /// <summary>
         /// Moves the Alarm into the provided <see cref="AlarmState" /> via the defined <see cref="AlarmCommand" />.
@@ -30,28 +30,20 @@ namespace AlarmExample
         /// <returns>The new <see cref="AlarmState" />.</returns>
         public AlarmState ExecuteTransition(AlarmCommand command)
         {
-            if (_machine.CanFire(command))
+            if (_handle.CanFire(command))
             {
-                _machine.Fire(command);
+                _handle.Fire(command);
             }
             else
             {
-                throw new InvalidOperationException($"Cannot transition from {CurrentState} via {command}");
+                throw new InvalidOperationException($"Cannot transition from via {command}");
             }
 
-            return CurrentState();
+            return State;
         }
-
-        /// <summary>
-        /// The current <see cref="AlarmState" /> of the alarm.
-        /// </summary>
-        public AlarmState CurrentState()
-        {
-            if (_machine != null)
-                return _machine.State;
-            else
-                throw new InvalidOperationException("Alarm hasn't been configured yet.");
-        }
+        
+        public AlarmState State { get; set; }
+        
 
         /// <summary>
         /// Defines whether the <see cref="Alarm"/> has been configured.
@@ -65,7 +57,7 @@ namespace AlarmExample
         /// <returns></returns>
         public bool CanFireCommand(AlarmCommand command) 
         { 
-            return _machine.CanFire(command); 
+            return _handle.CanFire(command); 
         }
 
         /// <summary>
@@ -85,7 +77,6 @@ namespace AlarmExample
         /// Disarmed via Disarm).</param>
         public Alarm(int armDelay, int pauseDelay, int triggerDelay, int triggerTimeOut)
         {
-            _machine = new StateMachine<AlarmState, AlarmCommand>(AlarmState.Undefined);
 
             preArmTimer = new System.Timers .Timer(armDelay * 1000) { AutoReset = false, Enabled = false };
             preArmTimer.Elapsed += TimeoutTimerElapsed;
@@ -96,53 +87,64 @@ namespace AlarmExample
             triggerTimeOutTimer = new System.Timers.Timer(triggerTimeOut * 1000) { AutoReset = false, Enabled = false };
             triggerTimeOutTimer.Elapsed += TimeoutTimerElapsed;
 
-            _machine.OnTransitioned(OnTransition);
+            CreateMachine();
 
-            _machine.Configure(AlarmState.Undefined)
-                .Permit(AlarmCommand.Startup, AlarmState.Disarmed)
-                .OnExit(() => IsConfigured = true);
+            _handle = _machine!.CreateHandle(this, AlarmState.Undefined);
+            _handle.Fire(AlarmCommand.Startup);
+        }
 
-            _machine.Configure(AlarmState.Disarmed)
-                .Permit(AlarmCommand.Arm, AlarmState.Prearmed);
+        private static void CreateMachine()
+        {
+	        if (_machine != null)
+	        {
+		        return;
+	        }
+	        _machine = new StateMachine<AlarmState, AlarmCommand, Alarm>();
+	        _machine.OnTransitioned(OnTransition);
 
-            _machine.Configure(AlarmState.Armed)
-                .Permit(AlarmCommand.Disarm, AlarmState.Disarmed)
-                .Permit(AlarmCommand.Trigger, AlarmState.PreTriggered)
-                .Permit(AlarmCommand.Pause, AlarmState.ArmPaused);
+	        _machine.Configure(AlarmState.Undefined)
+		        .Permit(AlarmCommand.Startup, AlarmState.Disarmed)
+		        .OnExit((transition) => transition.Context.IsConfigured = true);
 
-            _machine.Configure(AlarmState.Prearmed)
-                .OnEntry(() => ConfigureTimer(true, preArmTimer, "Pre-arm"))
-                .OnExit(() => ConfigureTimer(false, preArmTimer, "Pre-arm"))
-                .Permit(AlarmCommand.TimeOut, AlarmState.Armed)
-                .Permit(AlarmCommand.Disarm, AlarmState.Disarmed);
+	        _machine.Configure(AlarmState.Disarmed)
+		        .Permit(AlarmCommand.Arm, AlarmState.Prearmed);
 
-            _machine.Configure(AlarmState.ArmPaused)
-                .OnEntry(() => ConfigureTimer(true, pauseTimer, "Pause delay"))
-                .OnExit(() => ConfigureTimer(false, pauseTimer, "Pause delay"))
-                .Permit(AlarmCommand.TimeOut, AlarmState.Armed)
-                .Permit(AlarmCommand.Trigger, AlarmState.PreTriggered);
+	        _machine.Configure(AlarmState.Armed)
+		        .Permit(AlarmCommand.Disarm, AlarmState.Disarmed)
+		        .Permit(AlarmCommand.Trigger, AlarmState.PreTriggered)
+		        .Permit(AlarmCommand.Pause, AlarmState.ArmPaused);
 
-            _machine.Configure(AlarmState.Triggered)
-                .OnEntry(() => ConfigureTimer(true, triggerTimeOutTimer, "Trigger timeout"))
-                .OnExit(() => ConfigureTimer(false, triggerTimeOutTimer, "Trigger timeout"))
-                .Permit(AlarmCommand.TimeOut, AlarmState.Armed)
-                .Permit(AlarmCommand.Acknowledge, AlarmState.Acknowledged);
+	        _machine.Configure(AlarmState.Prearmed)
+		        .OnEntry(transition => transition.Context.ConfigureTimer(true, transition.Context.preArmTimer, "Pre-arm"))
+		        .OnExit((transition) => transition.Context.ConfigureTimer(false, transition.Context.preArmTimer, "Pre-arm"))
+		        .Permit(AlarmCommand.TimeOut, AlarmState.Armed)
+		        .Permit(AlarmCommand.Disarm, AlarmState.Disarmed);
 
-            _machine.Configure(AlarmState.PreTriggered)
-                .OnEntry(() => ConfigureTimer(true, triggerDelayTimer, "Trigger delay"))
-                .OnExit(() => ConfigureTimer(false, triggerDelayTimer, "Trigger delay"))
-                .Permit(AlarmCommand.TimeOut, AlarmState.Triggered)
-                .Permit(AlarmCommand.Disarm, AlarmState.Disarmed);
+	        _machine.Configure(AlarmState.ArmPaused)
+		        .OnEntry((transition) => transition.Context.ConfigureTimer(true, transition.Context.pauseTimer, "Pause delay"))
+		        .OnExit((transition) => transition.Context.ConfigureTimer(false, transition.Context.pauseTimer, "Pause delay"))
+		        .Permit(AlarmCommand.TimeOut, AlarmState.Armed)
+		        .Permit(AlarmCommand.Trigger, AlarmState.PreTriggered);
 
-            _machine.Configure(AlarmState.Acknowledged)
-                .Permit(AlarmCommand.Disarm, AlarmState.Disarmed);
+	        _machine.Configure(AlarmState.Triggered)
+		        .OnEntry((transition) => transition.Context.ConfigureTimer(true, transition.Context.triggerTimeOutTimer, "Trigger timeout"))
+		        .OnExit((transition) => transition.Context.ConfigureTimer(false, transition.Context.triggerTimeOutTimer, "Trigger timeout"))
+		        .Permit(AlarmCommand.TimeOut, AlarmState.Armed)
+		        .Permit(AlarmCommand.Acknowledge, AlarmState.Acknowledged);
 
-            _machine.Fire(AlarmCommand.Startup);
+	        _machine.Configure(AlarmState.PreTriggered)
+		        .OnEntry((transition) => transition.Context.ConfigureTimer(true, transition.Context.triggerDelayTimer, "Trigger delay"))
+		        .OnExit((transition) => transition.Context.ConfigureTimer(false, transition.Context.triggerDelayTimer, "Trigger delay"))
+		        .Permit(AlarmCommand.TimeOut, AlarmState.Triggered)
+		        .Permit(AlarmCommand.Disarm, AlarmState.Disarmed);
+
+	        _machine.Configure(AlarmState.Acknowledged)
+		        .Permit(AlarmCommand.Disarm, AlarmState.Disarmed);
         }
 
         private void TimeoutTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            _machine.Fire(AlarmCommand.TimeOut);
+            _handle.Fire(AlarmCommand.TimeOut);
         }
 
         private void ConfigureTimer(bool active, System.Timers.Timer timer, string timerName)
@@ -151,25 +153,26 @@ namespace AlarmExample
                 if (active)
                 {
                     timer.Start();
-                    Trace.WriteLine($"{timerName} started.");
+                    Console.WriteLine($"{timerName} started.");
                 }
                 else
                 {
                     timer.Stop();
-                    Trace.WriteLine($"{timerName} cancelled.");
+                    Console.WriteLine($"{timerName} cancelled.");
                 }
         }
 
-        private void OnTransition(StateMachine<AlarmState, AlarmCommand>.Transition transition)
+        private static void OnTransition(StateMachine<AlarmState, AlarmCommand, Alarm>.Transition transition)
         {
-            Trace.WriteLine($"Transitioned from {transition.Source} to " +
+            Console.WriteLine($"Transitioned {transition.Context} from {transition.Source} to " +
                 $"{transition.Destination} via {transition.Trigger}.");
         }
         
-        private StateMachine<AlarmState, AlarmCommand> _machine;
+        private static StateMachine<AlarmState, AlarmCommand, Alarm>? _machine;
         private System.Timers.Timer? preArmTimer;
         private System.Timers.Timer? pauseTimer;
         private System.Timers.Timer? triggerDelayTimer;
         private System.Timers.Timer? triggerTimeOutTimer;
+        private StateMachine<AlarmState, AlarmCommand, Alarm>.StateMachineHandle _handle;
     }
 }

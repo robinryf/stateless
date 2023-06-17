@@ -7,11 +7,14 @@
     /// </summary>
     internal class Program
     {
-        static Alarm? _alarm;
+        static Alarm[] _alarm = new Alarm[4];
 
         static void Main(string[] args)
         {
-            _alarm = new Alarm(10, 10, 10, 10);
+	        for (int i = 0; i < 4; i++)
+	        {
+		        _alarm[i] = new Alarm(i + 1, 10, 10, 10);
+	        }
 
             string input = "";
 
@@ -75,14 +78,14 @@
         static void WriteCanFire()
         {
             foreach (AlarmCommand command in (AlarmCommand[])Enum.GetValues(typeof(AlarmCommand)))
-                if (_alarm != null && _alarm.CanFireCommand(command))
+                if (_alarm != null && _alarm[0].CanFireCommand(command))
                     Console.WriteLine($"{Enum.GetName(typeof(AlarmCommand), command)}");
         }
 
         static void WriteState()
         {
             if(_alarm != null ) 
-                Console.WriteLine($"The current state is {Enum.GetName(typeof(AlarmState), _alarm.CurrentState())}");
+                Console.WriteLine($"The current state is {Enum.GetName(typeof(AlarmState), _alarm[0].State)}");
         }
 
         static void WriteFire(string input)
@@ -93,8 +96,10 @@
                 {
                     if (Enum.TryParse(input.Split(" ")[1], out AlarmCommand command))
                     {
-                        if (_alarm != null)
-                            _alarm.ExecuteTransition(command);
+	                    foreach (Alarm alarm in _alarm)
+	                    {
+							alarm.ExecuteTransition(command);
+	                    }
                     }
                     else
                     {
